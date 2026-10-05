@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vasooli: read the rejection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#13203A; --ink-soft:#44506B; --paper:#F2F4F6; --card:#FFFFFF;
+  --rule:#D3D9E2; --bar:#C8102E; --test:#B5751A; --ok:#2C5F4F; --pause:#2B5A86;
+  --shadow:0 1px 0 rgba(19,32,58,.07), 0 10px 28px -18px rgba(19,32,58,.35);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --ink:#E8ECF4; --ink-soft:#9BA7C0; --paper:#0E1524; --card:#172032;
+  --rule:#2B3750; --bar:#FF5C72; --test:#E0A33F; --ok:#5FBF9E; --pause:#6FA8DC;
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 12px 30px -18px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ink:#E8ECF4; --ink-soft:#9BA7C0; --paper:#0E1524; --card:#172032;
+  --rule:#2B3750; --bar:#FF5C72; --test:#E0A33F; --ok:#5FBF9E; --pause:#6FA8DC;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:Spectral,Georgia,"Times New Roman",serif; font-size:17px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px; margin:0 auto; padding:34px 20px 90px}
+header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:26px}
+h1{font-size:clamp(28px,4.4vw,42px); font-weight:800; letter-spacing:-.02em; margin:0 0 8px; line-height:1.1}
+.sub{margin:0; color:var(--ink-soft); max-width:62ch; font-size:16.5px}
+.grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:26px; align-items:start}
+@media(max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--card); border:1px solid var(--rule); border-radius:3px; box-shadow:var(--shadow); padding:20px}
+.flabel{font-size:14.5px; font-weight:600; display:block; margin:0 0 6px}
+.hint{font-size:13.5px; color:var(--ink-soft); margin:0 0 10px}
+textarea,input[type=date]{
+  width:100%; background:transparent; color:var(--ink);
+  border:1px solid var(--rule); border-radius:2px; padding:11px 12px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:13.5px; line-height:1.6;
+}
+textarea{min-height:270px; resize:vertical}
+textarea:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--pause); outline-offset:2px}
+.dates{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px}
+@media(max-width:480px){.dates{grid-template-columns:1fr}}
+.row{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center}
+button{
+  font-family:inherit; font-size:15.5px; font-weight:600; cursor:pointer;
+  background:var(--ink); color:var(--paper); border:1px solid var(--ink);
+  border-radius:2px; padding:11px 20px;
+}
+button.ghost{background:transparent; color:var(--ink-soft); border-color:var(--rule); font-weight:400; font-size:13.5px; padding:7px 12px}
+button:hover{opacity:.88}
+.samples{margin-top:22px; padding-top:16px; border-top:1px solid var(--rule)}
+.samples p{margin:0 0 9px; font-size:13.5px; color:var(--ink-soft)}
+.empty{color:var(--ink-soft); font-style:italic; padding:30px 4px}
+
+.verdict{border-left:5px solid var(--rule); padding:4px 0 4px 18px; margin-bottom:22px}
+.vk{font-size:13.5px; color:var(--ink-soft); margin:0 0 3px}
+.vt{font-size:clamp(23px,3.4vw,31px); font-weight:800; letter-spacing:-.015em; margin:0 0 8px; line-height:1.15}
+.vb{margin:0; max-width:58ch}
+[data-v="bar"] .verdict{border-left-color:var(--bar)} [data-v="bar"] .vt{color:var(--bar)}
+[data-v="test"] .verdict{border-left-color:var(--test)} [data-v="test"] .vt{color:var(--test)}
+[data-v="pause"] .verdict{border-left-color:var(--pause)} [data-v="pause"] .vt{color:var(--pause)}
+[data-v="ok"] .verdict{border-left-color:var(--ok)} [data-v="ok"] .vt{color:var(--ok)}
+
+.clock{border:1px solid var(--rule); border-radius:3px; padding:18px; margin-bottom:20px; background:var(--paper)}
+.clock .big{font-size:clamp(40px,7vw,62px); font-weight:800; line-height:.95; letter-spacing:-.03em; display:block}
+.clock .cap{font-size:14px; color:var(--ink-soft); margin:7px 0 0}
+.clock .verdictline{margin:11px 0 0; font-weight:600; font-size:15.5px}
+
+h3{font-size:14.5px; font-weight:600; margin:22px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--rule)}
+ul{margin:0; padding-left:19px} li{margin-bottom:6px}
+.chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
+.chip{font-family:"IBM Plex Mono",monospace; font-size:12.5px; border:1px solid var(--rule); padding:3px 9px; border-radius:2px; color:var(--ink-soft)}
+pre.draft{
+  font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.65;
+  white-space:pre-wrap; background:var(--paper); border:1px solid var(--rule);
+  padding:15px; border-radius:2px; overflow-x:auto; margin:0;
+}
+footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--rule); color:var(--ink-soft); font-size:13.5px; max-width:74ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Read the rejection</h1>
+  <p class="sub">A rejection letter is not a verdict. Paste one in and this tells you which of four things it actually is, whether the insurer was still allowed to make that argument, and what to send back.</p>
+</header>
+
+<div class="grid">
+  <section class="panel">
+    <label class="flabel" for="letter">The rejection letter</label>
+    <p class="hint">Paste the text. Nothing leaves this page.</p>
+    <textarea id="letter" spellcheck="false" placeholder="Paste the full text of the rejection or repudiation letter here."></textarea>
+
+    <div class="dates">
+      <div>
+        <label class="flabel" for="start">Cover began</label>
+        <p class="hint">First policy, including any ported.</p>
+        <input type="date" id="start">
+      </div>
+      <div>
+        <label class="flabel" for="claim">Claim raised</label>
+        <p class="hint">Date on the claim, not the letter.</p>
+        <input type="date" id="claim">
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="go">Read it</button>
+      <button class="ghost" id="clear">Clear</button>
+    </div>
+
+    <div class="samples">
+      <p>Or load a letter shaped like one we have seen:</p>
+      <div class="row" style="margin-top:0">
+        <button class="ghost" data-s="0">Non-disclosure, long cover</button>
+        <button class="ghost" data-s="1">Fraud alleged</button>
+        <button class="ghost" data-s="2">Looks final, isn't</button>
+        <button class="ghost" data-s="3">Permanent exclusion</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="out" data-v="">
+    <p class="empty">The reading appears here.</p>
+  </section>
+</div>
+
+<footer>
+  Built for The Great Rewiring. The four patterns come from real rejection letters across five insurers, reviewed with permission. No claimant data is stored here or reproduced in the samples, which are written from scratch to match the shape of what we read. This reads a letter; it is not legal advice.
+</footer>
+</div>
+
+<script>
+const SAMPLES = [
+{ s:"2017-04-12", c:"2026-05-20", t:
+`Reimbursement claim request for your Individual policy
+
+Dear Policyholder,
+
+This is with reference to your reimbursement request for the aforesaid policy number. We regret to inform you that we are unable to approve your request currently, registered under Claim Number XXXXXXX, hospitalised for cataract of the left eye, due to the following reasons.
+
+On scrutiny of the documents it has been observed that the claimant is covered under an Individual Insurance policy since April 2017. It is noted that hypertension since 15 years is not disclosed in the proposal form which is material to the policy decision, hence claim stands repudiated under the policy condition F.I.1 Disclosure of Information.
+
+We regret our inability to admit this liability under the present policy conditions. We also reserve the right to repudiate the claim under any other grounds available to us.`},
+
+{ s:"2023-02-01", c:"2026-09-02", t:
+`CLAIM DENIAL LETTER
+
+Subject: Denial of Claim
+
+We have reviewed the claim filed by you pertaining to your Health Insurance policy and hereby inform you that the claim is not payable as per policy terms and conditions listed below:
+
+- 5.6 FRAUDULENT CLAIM. 5.6 DISCREPANCY IN MEDICAL DOCUMENTS, condition prior to policy
+- 5.6 FRAUDULENT CLAIM
+- 5.1.1 NON DISCLOSURE OF MATERIAL FACTS / PRE-EXISTING AILMENTS AT TIME OF PROPOSAL
+
+In case you require any additional assistance, please visit the self-help portal.`},
+
+{ s:"2021-06-15", c:"2026-08-01", t:
+`Subject: Repudiation of Claim
+
+Details of the submitted claim
+Date of Admission: 09 July 2026
+Date of Discharge: 10 July 2026
+Claimed Amount: 17360
+Diagnosis: RE CATARACT
+
+We regret to inform that your claim is repudiated due to the following reasons:
+
+We regret that the claim is not payable under clause 6.2.4 since liability for the claim cannot be ascertained basis the available information. Please submit the following documents for consideration:
+
+1. As per records submitted, patient is diagnosed with RE CATARACT. Please submit treating doctor certificate mentioning duration of the ailment, all treatment records including first consultation paper.
+2. Payment receipt in original of the payment made to the hospital against main hospitalization bill.
+
+If any details were overlooked during evaluation, please notify us. Step 1: call the customer helpline. Step 2: Grievance Redressal Team. Step 3: Grievance Redressal Officer. In case you are not satisfied, you can contact the Insurance Ombudsman.`},
+
+{ s:"2025-10-04", c:"2026-09-23", t:
+`UPDATE ON YOUR CLAIM REQUEST
+
+Dear Policyholder,
+
+We have carefully reviewed and completed assessment of your claim. Based on documents shared by you and in keeping with your policy terms, we are unable to settle your claim request at this time. The reason specifying rejection of your claim is mentioned below.
+
+Claim Rejection Reason: Congenital External Illness, Not Covered.
+
+Your policy coverage excludes external congenital anomalies, inherited disorders and associated complications or developmental conditions, hence claim rejected. Refer to the "EXCLUSIONS UNDER THE POLICY, Specific Exclusions, Point h" section in your policy wordings.
+
+If you have any concerns or queries, kindly contact us within a period of 8 weeks.`}
+];
+
+const $ = id => document.getElementById(id);
+
+function months(a,b){
+  if(!a||!b) return null;
+  const s=new Date(a), c=new Date(b);
+  if(isNaN(s)||isNaN(c)||c<s) return null;
+  let m=(c.getFullYear()-s.getFullYear())*12 + (c.getMonth()-s.getMonth());
+  if(c.getDate()<s.getDate()) m--;
+  return m;
+}
+const esc = s => s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function clauses(t){
+  const out=new Set();
+  const re=/(?:clause|section|condition|point|under)\s*[<"'(]?\s*([A-Z]?\.?\s?\d+(?:\.\d+)*[a-z]?)\b/gi;
+  let m; while((m=re.exec(t))!==null){ const v=m[1].replace(/\s/g,''); if(/\d/.test(v)) out.add(v); }
+  const re2=/\b([A-Z]\.[IVX]+\.\d+)\b/g;
+  while((m=re2.exec(t))!==null) out.add(m[1]);
+  return [...out].slice(0,8);
+}
+function amounts(t){
+  const out=new Set(); const re=/(?:claimed amount|rs\.?|₹|inr)[:\s]*([\d][\d,]{2,})/gi;
+  let m; while((m=re.exec(t))!==null) out.add(m[1]);
+  return [...out].slice(0,4);
+}
+function windowDays(t){
+  const m=t.match(/within a period of\s+(\d+)\s+(week|day|month)s?/i);
+  return m? `${m[1]} ${m[2]}s` : null;
+}
+
+function read(text, startD, claimD){
+  const t=text.toLowerCase();
+  const mo=months(startD,claimD);
+
+  const docReq = /please submit|submit the following|submit following|for consideration|kindly submit|cannot be ascertained|can.?t be ascertained|additional document/.test(t);
+  const fraud  = /\bfraud|fraudulent\b/.test(t);
+  const nond   = /non.?disclosure|not disclosed|misrepresent|material fact|proposal form|disclosure of information|pre.?existing/.test(t);
+  const perm   = /congenital|permanent exclusion|specific exclusion|inherited disorder|cosmetic/.test(t);
+
+  const facts=[]; let v,title,body,actions=[],draft=null;
+
+  if(docReq && !fraud){
+    v='pause';
+    title='This is a document request, not a denial';
+    body='The letter is headed as a repudiation and cites a clause, but what it actually asks for is paperwork. The claim has not been refused. It has been paused, and it restarts the moment you send what it names.';
+    facts.push('The letter asks for documents rather than closing the claim.');
+    facts.push('A clause about liability not being ascertainable means the insurer says it cannot yet decide, not that it has decided against you.');
+    actions=['Collect each document the letter names, in the exact form it names, including originals where it says original.',
+             'Resubmit against the same claim number. No grievance is needed yet.',
+             'Diary the insurer\u2019s own turnaround and follow up the day it passes.'];
+  }
+  else if(fraud && nond){
+    v='test';
+    title='Fraud is alleged. Make them establish it';
+    body='The letter cites a fraud clause alongside non-disclosure. That pairing matters: after the moratorium, fraud is the only surviving route to repudiate, so it tends to get asserted rather than proved.'+
+         (mo!==null && mo>=60 ? ` With ${mo} months of cover behind this claim, non-disclosure on its own was already barred, which makes the fraud allegation the whole case.` : '');
+    facts.push('Both a fraud clause and a non-disclosure clause are cited.');
+    if(mo!==null) facts.push(`${mo} months of continuous cover at the date of claim.`);
+    facts.push('An allegation is not an establishment. The standard is established fraud.');
+    actions=['Ask in writing what establishes fraud, as distinct from what suggests non-disclosure.',
+             'Ask for the specific document said to be discrepant and the basis for that reading.',
+             'If cover exceeds 60 months, say plainly that non-disclosure alone is time-barred and the insurer must stand or fall on fraud.'];
+  }
+  else if(nond && mo!==null && mo>=60){
+    v='bar';
+    title='The insurer was no longer allowed to make this argument';
+    body=`This claim sits on ${mo} months of continuous cover. Under section 13 of the IRDAI Master Circular on Health Insurance 2024, no health claim is contestable on grounds of non-disclosure or misrepresentation after 60 months, except for established fraud. This letter alleges non-disclosure. It does not allege fraud.`;
+    facts.push(`${mo} months of continuous cover. The moratorium closed at 60, which is ${mo-60} months before this claim.`);
+    facts.push('The stated ground is non-disclosure or misrepresentation.');
+    facts.push('No fraud is alleged anywhere in the letter.');
+    actions=['File a grievance citing section 13 of the Master Circular, with the cover start date as the evidence.',
+             'Attach proof of unbroken renewal from the start date, including any ported policy.',
+             'If the grievance fails, the Insurance Ombudsman is free and the ground here is narrow and documentary.'];
+    draft=`To the Grievance Redressal Officer
+
+Subject: Grievance against repudiation of claim
+
+The claim was repudiated on the ground of non-disclosure under the policy's disclosure condition.
+
+Cover under this policy has run continuously since ${startD}. At the date of claim, ${claimD}, that is ${mo} months of continuous coverage.
+
+Section 13, Chapter I of the Master Circular on IRDAI (Insurance Products) Regulations 2024, Health Insurance, provides that no policy and no claim shall be contestable on any ground of non-disclosure or misrepresentation, except for established fraud, after the completion of the moratorium period of 60 months of continuous coverage.
+
+The moratorium on this policy completed ${mo-60} months before the claim arose. The repudiation letter alleges non-disclosure. It does not allege, and the insurer has not established, fraud.
+
+The ground relied on was therefore unavailable at the time the claim was repudiated. I request that the repudiation be withdrawn and the claim settled.
+
+Enclosed: policy schedules evidencing continuous renewal from ${startD}, and the repudiation letter.`;
+  }
+  else if(nond){
+    v='test';
+    title='Non-disclosure, and the moratorium does not help yet';
+    body = mo===null
+      ? 'The ground is non-disclosure. Enter the date cover began and the date of claim: if continuous cover exceeds 60 months, this argument is barred outright and the case becomes much simpler.'
+      : `The ground is non-disclosure, and this claim sits on ${mo} months of cover, short of the 60-month moratorium. The argument is available to the insurer, so it has to be met on the facts.`;
+    facts.push('Stated ground is non-disclosure or a pre-existing condition.');
+    if(mo!==null) facts.push(`${mo} months of cover, ${60-mo} short of the moratorium.`);
+    actions=['Establish when the condition was first diagnosed, with records, not recollection.',
+             'Test materiality: a condition unrelated to the treatment claimed is weak ground for repudiating the whole claim.',
+             'Check whether the proposal form actually asked the question the insurer says you answered wrongly.'];
+  }
+  else if(perm){
+    v='ok';
+    title='This one looks correctly denied';
+    body='The letter relies on a permanent or specific exclusion written into the policy. Permanent exclusions survive the moratorium, so length of cover does not help here. Check that the exclusion named genuinely describes the condition treated, and if it does, this is not worth months of fighting.';
+    facts.push('Ground is a permanent or specific exclusion, not non-disclosure.');
+    facts.push('The letter points to a named section of the policy wordings.');
+    if(mo!==null) facts.push(`${mo} months of cover, which does not affect a permanent exclusion.`);
+    actions=['Read the exclusion in the policy wordings and compare it to the diagnosis on the discharge summary.',
+             'Contest only if the condition treated falls outside the exclusion as written.',
+             'Otherwise tell the claimant plainly to stop, and look at what else in the episode is still claimable.'];
+  }
+  else{
+    v=''; title='No pattern recognised';
+    body='This letter does not match the four patterns we built from. Read it for the clause it cites and the documents it asks for, then decide by hand.';
+    actions=['Find the clause number and read that clause in the policy wordings.','Check for a contest window stated in the letter.'];
+  }
+
+  return {v,title,body,facts,actions,draft,mo,
+    clauses:clauses(text), amounts:amounts(text), win:windowDays(text)};
+}
+
+function render(r,startD,claimD){
+  const o=$('out'); o.dataset.v=r.v;
+  let h=`<div class="verdict"><p class="vk">What this letter is</p><h2 class="vt">${esc(r.title)}</h2><p class="vb">${esc(r.body)}</p></div>`;
+
+  if(r.mo!==null){
+    const past=r.mo>=60;
+    h+=`<div class="clock"><span class="big">${r.mo}</span><p class="cap">months of continuous cover when the claim arose</p>
+    <p class="verdictline" style="color:${past?'var(--bar)':'var(--ink-soft)'}">${past
+      ? `Past the 60-month moratorium by ${r.mo-60} months. Non-disclosure is barred here.`
+      : `${60-r.mo} months short of the moratorium. Non-disclosure is still available to the insurer.`}</p></div>`;
+  } else {
+    h+=`<div class="clock"><p class="cap" style="margin:0">Enter both dates to run the moratorium check. It is usually the fastest thing that decides a case.</p></div>`;
+  }
+
+  if(r.facts.length){ h+=`<h3>What the letter shows</h3><ul>${r.facts.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`; }
+  h+=`<h3>What to do</h3><ul>${r.actions.map(a=>`<li>${esc(a)}</li>`).join('')}</ul>`;
+
+  if(r.clauses.length||r.amounts.length||r.win){
+    h+=`<h3>Pulled from the text</h3><div class="chips">`;
+    r.clauses.forEach(c=>h+=`<span class="chip">clause ${esc(c)}</span>`);
+    r.amounts.forEach(a=>h+=`<span class="chip">₹${esc(a)}</span>`);
+    if(r.win) h+=`<span class="chip">contest within ${esc(r.win)}</span>`;
+    h+=`</div>`;
+  }
+
+  if(r.draft){
+    h+=`<h3>Draft grievance</h3><pre class="draft">${esc(r.draft)}</pre>
+    <div class="row"><button class="ghost" id="copy">Copy the draft</button></div>`;
+  }
+  o.innerHTML=h;
+  const cb=$('copy');
+  if(cb) cb.onclick=()=>{ navigator.clipboard.writeText(r.draft).then(()=>{cb.textContent='Copied';setTimeout(()=>cb.textContent='Copy the draft',1600);}).catch(()=>{cb.textContent='Select it manually';}); };
+}
+
+$('go').onclick=()=>{
+  const t=$('letter').value.trim();
+  if(!t){ $('out').dataset.v=''; $('out').innerHTML='<p class="empty">Paste a letter first.</p>'; return; }
+  render(read(t,$('start').value,$('claim').value), $('start').value, $('claim').value);
+};
+$('clear').onclick=()=>{ $('letter').value=''; $('start').value=''; $('claim').value='';
+  $('out').dataset.v=''; $('out').innerHTML='<p class="empty">The reading appears here.</p>'; };
+document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{
+  const s=SAMPLES[+b.dataset.s];
+  $('letter').value=s.t; $('start').value=s.s; $('claim').value=s.c;
+  render(read(s.t,s.s,s.c), s.s, s.c);
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+</script>
+</body>
+</html>
